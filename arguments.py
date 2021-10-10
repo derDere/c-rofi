@@ -12,6 +12,12 @@ def Arguments():
   parser.add_argument('-t', '--title', metavar='title', type=str, default='',
                       help='Defines the title shown at the top of the menu. (Default is :)')
 
+  parser.add_argument('--option-align', metavar='align', choices=['L','C','R'], default='',
+                      help='Defines the text alignment for the options. (Default is L)')
+
+  parser.add_argument('--title-align', metavar='align', choices=['L','C','R'], default='',
+                      help='Defines hot the input and title is aligned at the top of the menu. (Default is L)')
+
   parser.add_argument('-c', '--columns', type=int, default=0, metavar='columncount',
                       help='Defines the number of columns to display the options in. (default is 1)')
 

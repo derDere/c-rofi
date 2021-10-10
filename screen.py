@@ -1,3 +1,4 @@
+import _curses
 import curses as c
 from curses import *
 import math
@@ -11,6 +12,53 @@ OPTIONS1 = 5
 OPTIONS2 = 6
 
 
+class Option:
+  def __init__(self, screen, name, value):
+    self.screen = screen
+    self.w = screen.w
+    self.name = name
+    self.value = value
+    self.index = 0
+    self.selected = False
+
+  def draw(self, index):
+    self.index = index
+
+    mY, _ = self.w.getmaxyx()
+    mY -= 2
+    if self.screen.theme.border:
+      mY -= 2
+
+    y = (self.index % mY) + 2
+    if self.screen.theme.border: y += 1
+    col = self.index // mY
+    x = self.screen.colX[col]
+    w = self.screen.colW[col]
+
+    if self.selected:
+      color = SELECTION
+    elif index % 2 == 1:
+      color = OPTIONS2
+    else:
+      color = OPTIONS1
+
+    if self.screen.theme.option_align == "C":
+      leftOver = w - len(self.name)
+      frontM = leftOver // 2
+      backM = w - frontM
+      displayname = ((' ' * frontM) + self.name + (' ' * backM))[:w]
+    elif self.screen.theme.option_align == "R":
+      displayname = ((" " * w) + self.name)[-w:]
+    else:
+      displayname = (self.name + (" " * w))[:w]
+
+    try:
+      self.w.addstr(y, x, displayname, c.color_pair(color))
+    except _curses.error as ce:
+      if str(ce) != "addwstr() returned ERR":
+        raise ce
+
+
 class Screen:
   def __init__(self, s, args, theme, lines):
     self.args = args
@@ -20,6 +68,7 @@ class Screen:
     self.colX = []
     self.colW = []
     self.title = ":"
+    self.input = ""
 
     if len(args.title) > 0:
       self.title = args.title
@@ -36,6 +85,59 @@ class Screen:
 
     self.w = c.newwin(10, 10, 10, 10)
     self.reprintFullWindow(s)
+
+  def drawTopLine(self):
+    _, w = self.w.getmaxyx()
+    titleOff = 0
+    if self.theme.border:
+      w -= 2
+      titleOff = 1
+
+    if self.theme.title_align == "C":
+      titleLen = len(self.title)
+      inputLen = len(self.input)
+      half1 = w // 2
+      if titleLen > half1: titleLen = half1
+      half2 = w - titleLen
+      if inputLen > half2: inputLen = half2
+      leftOver = w - titleLen - inputLen
+      frontM = leftOver // 2
+      backM = leftOver - frontM
+      self.w.addstr(titleOff, titleOff, ((' ' * frontM) + self.title)[-(titleLen + frontM):], c.color_pair(TITLE))
+      self.w.addstr((self.input + (' ' * backM))[-(inputLen + backM):], c.color_pair(INPUT))
+
+    elif self.theme.title_align == "R":
+      inputLen = len(self.input)
+      if inputLen > w:
+        inputLen = w
+      leftSide = w - inputLen
+      if leftSide < 5:
+        leftSide = 5
+      titleLen = len(self.title)
+      if titleLen > leftSide:
+        titleLen = leftSide
+      rightSide = w - leftSide
+      if rightSide > inputLen:
+        rightSide = inputLen
+      self.w.addstr(titleOff, titleOff, ((' ' * (leftSide)) + self.title)[-leftSide:], c.color_pair(TITLE))
+      self.w.addstr(self.input[-rightSide:], c.color_pair(INPUT))
+
+    else:
+      inputLen = len(self.input)
+      if inputLen > w:
+        inputLen = w
+      leftOver = w - inputLen
+      if leftOver < 5:
+        leftOver = 5
+      titleLen = len(self.title)
+      if titleLen > leftOver:
+        titleLen = leftOver
+      leftOver = w - titleLen
+      if inputLen > leftOver:
+        inputLen = leftOver
+      leftSide = w - titleLen - inputLen
+      self.w.addstr(titleOff, titleOff, self.title[-titleLen:], c.color_pair(TITLE))
+      self.w.addstr((self.input + (' ' * leftSide))[-leftOver:], c.color_pair(INPUT))
 
   def reprintFullWindow(self, s):
     mY, mX = s.getmaxyx()
@@ -66,8 +168,6 @@ class Screen:
     L_CM = self.theme.line_style[ 9]
     L_VL = self.theme.line_style[10]
 
-    self.w.border()
-
     # Draw Lines
     self.w.attron(c.color_pair(LINES))
     if self.theme.border:
@@ -81,8 +181,9 @@ class Screen:
       self.w.addstr(h - 1, 0, L_BL + (L_HL * (w - 2)))
       try:
         self.w.addch(h-1,w-1,L_BR)
-      except Exception:
-        pass
+      except _curses.error as ce:
+        if str(ce) != "add_wch() returned ERR":
+          raise ce
     else:
       self.w.addstr(1, 0, L_HL * w)
 
@@ -114,25 +215,27 @@ class Screen:
             self.w.addstr(y, x, colBot)
           else:
             self.w.addstr(y, x, L_VL)
+    colH = h - 2
     if self.theme.border:
       self.colX.append(w)
+      colH -= 2
     else:
       self.colX.append(w + 1)
     for i in range(len(self.colX) - 1):
       x = self.colX[i]
       w = self.colX[i+1] - x
       self.colW.append(w - 1)
-    #for i in range(len(self.colX) - 1):
-    #  x = self.colX[i]
-    #  w = self.colW[i]
-    #  self.w.addstr(4, x, str(i) * w)
     self.w.attroff(c.color_pair(LINES))
 
     # Draw Title
-    title_off = 0
-    if self.theme.border:
-      title_off = 1
-    self.w.addstr(title_off, title_off, self.title, c.color_pair(TITLE))
+    self.drawTopLine()
+
+    # Redraw Options
+    opt = Option(self, "name", "val")
+    opt.selected = True
+    for i in range(self.theme.cols * colH):
+      opt.draw(i)
+      opt.selected = False
 
   def menu(self, s):
     #self.w.addstr("HW!\n\n")

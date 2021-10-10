@@ -11,7 +11,9 @@ def DefaultTheme():
       },
       "Border": False,
       "Width": "100%",
-      "Height": "100%"
+      "Height": "100%",
+      "TitleAlign": "L",
+      "OptionAlign": "L"
     },
     "LineStyle": "┌─┐└┘├┤┬┴┼│",
     "Background": {
@@ -64,6 +66,8 @@ class Theme:
     self.lBg = int(theme["Lines"]["Bg"])
     self.iFg = int(theme["Input"]["Fg"])
     self.iBg = int(theme["Input"]["Bg"])
+    self.title_align = (str(theme["Layout"]["TitleAlign"]).upper() + "L")[0]
+    self.option_align = (str(theme["Layout"]["OptionAlign"]).upper() + "L")[0]
 
     if argv.columns > 0:
       self.cols = argv.columns
@@ -81,6 +85,10 @@ class Theme:
       self.margin_y = argv.margin_y
     if len(argv.border) > 0:
       self.border = bool(argv.border.lower() in ['true','on','yes','1'])
+    if len(argv.title_align) > 0:
+      self.title_align = (str(argv.title_align).upper() + 'L')[0]
+    if len(argv.option_align) > 0:
+      self.option_align = (str(argv.option_align).upper() + 'L')[0]
 
   def getBounds(self, mY, mX):
     w = self.width

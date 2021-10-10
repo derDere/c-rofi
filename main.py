@@ -12,10 +12,6 @@ def mainScreen(stdscr, args, lines):
   t = theme.Theme(args)
   s = screen.Screen(stdscr, args, t, lines)
   s.menu(stdscr)
-  #stdscr.addstr('Hello World!\n\n')
-  #for l in lines:
-  #  stdscr.addstr("%s\n" % l)
-  #stdscr.getch()
   return s.result
 
 
