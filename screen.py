@@ -1,5 +1,6 @@
 import _curses
 import curses as c
+import curses.panel as cp
 from curses import *
 import math
 
@@ -61,6 +62,7 @@ class Option:
 
 class Screen:
   def __init__(self, s, args, theme, lines):
+    self.s = s
     self.args = args
     self.lines = lines
     self.theme = theme
@@ -84,7 +86,8 @@ class Screen:
     c.init_pair(OPTIONS2, theme.fg, theme.bg2)
 
     self.w = c.newwin(10, 10, 10, 10)
-    self.reprintFullWindow(s)
+    self.p = cp.new_panel(self.w)
+    self.reprintFullWindow()
 
   def drawTopLine(self):
     _, w = self.w.getmaxyx()
@@ -139,8 +142,8 @@ class Screen:
       self.w.addstr(titleOff, titleOff, self.title[-titleLen:], c.color_pair(TITLE))
       self.w.addstr((self.input + (' ' * leftSide))[-leftOver:], c.color_pair(INPUT))
 
-  def reprintFullWindow(self, s):
-    mY, mX = s.getmaxyx()
+  def reprintFullWindow(self):
+    mY, mX = self.s.getmaxyx()
 
     minW = self.theme.cols * 2 - 1
     minH = 3
@@ -153,8 +156,11 @@ class Screen:
     if h < minH: h = minH
     if w < minW: w = minW
 
-    self.w.mvwin(y, x)
+    self.w.clear()
+    self.s.clear()
     self.w.resize(h, w)
+    self.w.mvwin(y, x)
+    cp.update_panels()
 
     L_TL = self.theme.line_style[ 0]
     L_HL = self.theme.line_style[ 1]
@@ -238,8 +244,25 @@ class Screen:
       opt.selected = False
 
   def menu(self, s):
-    #self.w.addstr("HW!\n\n")
-    #for l in self.lines:
-    #  self.w.addstr("%s\n" % l)
-    self.w.getch()
+    key = ''
+    while key != 'q':
+      self.drawTopLine()
+      key = self.w.getkey()
+      if key == "\n":
+        pass
+      #elif key in [c.KEY_UP]:
+      #  exit()
+      #elif key == "^[[B":
+      #  pass
+      #elif key == "^[[C":
+      #  pass
+      #elif key == "^[[F":
+      #  pass
+      #elif key == "^?":
+      #  if len(self.input) > 1:
+      #    self.input = self.input[:-1]
+      elif key == c.KEY_RESIZE:
+        self.reprintFullWindow()
+      elif len(str(key)) <= 1:
+        self.input += "|" + str(key)
     self.result = "ROFLMAO"
